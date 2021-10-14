@@ -89,7 +89,7 @@ exports.addUser = addUser;
  * @param {string} guest_id The id of the user.
  * @return {Promise<[{}]>} A promise to the reservations.
  */
-const getAllReservations = function(guest_id, limit = 10) {
+const getAllReservations = function(guest_id, limit = 100) {
   
     return pool
       .query( `SELECT properties.*, reservations.*, avg(rating) as average_rating
@@ -102,6 +102,7 @@ const getAllReservations = function(guest_id, limit = 10) {
       ORDER BY reservations.start_date
       LIMIT $2;`, [guest_id,limit])
       .then((result) => {
+       
          return result.rows;
       }) .catch((err) => {
         console.log(err.message);
@@ -118,15 +119,16 @@ exports.getAllReservations = getAllReservations;
  * @param {*} limit The number of results to return.
  * @return {Promise<[{}]>}  A promise to the properties.
  */
- const getAllProperties = function (options, limit = 10) {
+ const getAllProperties = function (options, limit = 100) {
   // 1
   const queryParams = [];
   // 2
   let queryString = `
   SELECT properties.*, avg(property_reviews.rating) as average_rating
   FROM properties
-  JOIN property_reviews ON properties.id = property_id
-  `;
+  FULL OUTER JOIN property_reviews ON properties.id = property_id
+  
+  `
 
   // 3
   if (options.city) {
@@ -135,7 +137,9 @@ exports.getAllReservations = getAllReservations;
   }
   if(options.owner_id){
     queryParams.push(options.owner_id);
-    queryString += `AND owner_id = $${queryParams.length} \n`;
+    console.log("query",queryParams)
+    queryString += `WHERE owner_id = $${queryParams.length} \n`;
+    console.log("query2",queryString )
   }
   if(options.minimum_price_per_night){
     queryParams.push(options.minimum_price_per_night);
@@ -163,7 +167,9 @@ exports.getAllReservations = getAllReservations;
   //console.log(queryString, queryParams);
 
   // 6
-  return pool.query(queryString, queryParams).then((res) => res.rows);
+  return pool.query(queryString, queryParams).then((res) => {
+    console.log("result",res.rows)
+    return res.rows});
 };
   
 exports.getAllProperties = getAllProperties;
@@ -181,7 +187,7 @@ const addProperty = function(property) {
   VALUES ($1, $2, $3, $4 ,$5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
   RETURNING *
 `;
-
+console.log("prop",property)
 return pool
   .query( sqlProperty,[property.owner_id,property.title,property.description,property.thumbnail_photo_url,property.cover_photo_url,property.cost_per_night,property.street, property.city, property.province, property.post_code, property.country, property.parking_spaces, property.number_of_bathrooms, property.number_of_bedrooms])
   .then((result) => {
